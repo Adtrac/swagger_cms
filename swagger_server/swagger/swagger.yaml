@@ -1,0 +1,356 @@
+openapi: 3.0.0
+info:
+  title: Kaufland DOOH REST API
+  description: CMS REST API
+  termsOfService: http://somewhere.kaufland.com
+  contact:
+    email: karlheinz.walter@kaufland.com
+  version: v10
+servers:
+- url: http://localhost:8080/api/v10
+paths:
+  /players/{playerId}:
+    get:
+      summary: Retrieve a single player's record
+      description: Returns a player record
+      operationId: players_player_id_get
+      parameters:
+      - name: playerId
+        in: path
+        description: ID of player to return
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Query successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+        "404":
+          description: Player not found
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+  /players/{playerId}/healthcheck:
+    get:
+      summary: Retrieve a single player's heartbeat
+      description: Returns a player state
+      operationId: players_player_id_healthcheck_get
+      parameters:
+      - name: playerId
+        in: path
+        description: ID of player to health-check
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Query successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerState'
+        "404":
+          description: No such Player.
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+  /players:
+    get:
+      summary: List all players
+      description: Returns a list of player records
+      operationId: players_get
+      responses:
+        "200":
+          description: Query successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Players'
+        "404":
+          description: No players found
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+  /assets:
+    get:
+      summary: List all asset metadata
+      description: Retrieve the list of all asset metadata
+      operationId: assets_get
+      responses:
+        "200":
+          description: Query successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assets'
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+    post:
+      summary: Upload a digital media file
+      description: Upload a media file
+      operationId: assets_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/assets_body'
+      responses:
+        "201":
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+  /playouts/{date}:
+    post:
+      summary: Submit the playout plan for the entire day
+      operationId: playouts_date_post
+      parameters:
+      - name: date
+        in: path
+        description: Playout plan will be executed on this day.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: date
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayoutPlan'
+      responses:
+        "201":
+          description: Successfully submitted playout plan.
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+  /reports/{date}:
+    get:
+      summary: Retrieve the given day's playout report
+      description: Returns a list of asset records (not the media files themselves!)
+      operationId: reports_date_get
+      parameters:
+      - name: date
+        in: path
+        description: date for which to retrieve the playout reports
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: date
+      responses:
+        "200":
+          description: Query successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+        "404":
+          description: No Assets found
+      x-openapi-router-controller: swagger_server.controllers.default_controller
+components:
+  schemas:
+    Player:
+      required:
+      - height
+      - playerId
+      - width
+      type: object
+      properties:
+        playerId:
+          type: string
+        siteId:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+        longitude:
+          type: number
+          format: float
+        latitude:
+          type: number
+          format: float
+        width:
+          type: integer
+          format: int32
+        height:
+          type: integer
+          format: int32
+        orientation:
+          type: string
+          description: Screen orientation
+          enum:
+          - landscape
+          - portrait
+        openingHours:
+          type: array
+          description: "A list of open periods, possibly more than one per weekday"
+          items:
+            $ref: '#/components/schemas/OpeningHour'
+      example:
+        orientation: landscape
+        latitude: 6.0274563
+        name: name
+        width: 1
+        siteId: siteId
+        location: location
+        openingHours:
+        - weekday: "0"
+          fromTime: fromTime
+          toTime: toTime
+        - weekday: "0"
+          fromTime: fromTime
+          toTime: toTime
+        playerId: playerId
+        longitude: 0.8008282
+        height: 5
+    Players:
+      type: array
+      items:
+        $ref: '#/components/schemas/Player'
+    OpeningHour:
+      type: object
+      properties:
+        weekday:
+          type: string
+          description: "Single digit: 0=Mon, 1=Tue, ... 6=Sun)"
+          enum:
+          - "0"
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+          - "5"
+          - "6"
+        fromTime:
+          type: string
+        toTime:
+          type: string
+      description: A pair of weekday and opening period.
+      example:
+        weekday: "0"
+        fromTime: fromTime
+        toTime: toTime
+    SpecialDays:
+      type: array
+      items:
+        $ref: '#/components/schemas/SpecialDays_inner'
+    PlayerState:
+      type: object
+      properties:
+        playerId:
+          type: string
+        playerState:
+          type: string
+          enum:
+          - running
+          - stopped
+          - unknown
+        lastActive:
+          type: string
+          format: YYYY-MM-DDTHH:MM:SS
+      example:
+        lastActive: lastActive
+        playerState: running
+        playerId: playerId
+    Assets:
+      type: array
+      items:
+        $ref: '#/components/schemas/Asset'
+    Asset:
+      type: object
+      properties:
+        id:
+          type: string
+        metadata:
+          type: object
+      example:
+        metadata: {}
+        id: id
+    PlayoutPlan:
+      type: object
+      properties:
+        playouts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayoutPlan_playouts'
+    Report:
+      type: array
+      items:
+        $ref: '#/components/schemas/Report_inner'
+    assets_body:
+      type: object
+      properties:
+        _metadata:
+          type: string
+        content:
+          type: string
+          format: binary
+    SpecialDays_inner:
+      type: object
+      properties:
+        date:
+          type: string
+          format: YYYY-MM-DD
+        fromTime:
+          type: string
+          format: HH:MM:SS
+        toTime:
+          type: string
+          format: HH:MM:SS
+      description: Periods for days that are normally closed.
+    PlayoutPlan_targetGroup:
+      type: object
+      properties:
+        startAge:
+          type: integer
+        endAge:
+          type: integer
+        gender:
+          type: string
+          enum:
+          - male
+          - female
+          - any
+    PlayoutPlan_playouts:
+      type: object
+      properties:
+        fromHour:
+          type: integer
+        toHour:
+          type: integer
+        assetId:
+          type: string
+        playerIds:
+          type: array
+          items:
+            type: string
+        count:
+          type: integer
+        priority:
+          type: integer
+        assetLag:
+          type: integer
+        targetGroup:
+          $ref: '#/components/schemas/PlayoutPlan_targetGroup'
+    Report_inner:
+      type: object
+      properties:
+        id:
+          type: string
+        playerId:
+          type: string
+        hours:
+          type: array
+          items:
+            type: integer
+      example:
+        hours:
+        - 0
+        - 0
+        id: id
+        playerId: playerId
+
